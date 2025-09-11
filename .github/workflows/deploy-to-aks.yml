@@ -10,7 +10,7 @@ env:
   CONTAINER_NAME: "my-static-site"
   RESOURCE_GROUP: "skd-aks-demo-rg"
   CLUSTER_NAME: "skd-demo-aks"
-  DEPLOYMENT_MANIFEST_PATH: "k8s/deployment.yaml"
+  DEPLOYMENT_MANIFEST_PATH: "k8s/deployment.yml"
 
 jobs:
   buildImage:
