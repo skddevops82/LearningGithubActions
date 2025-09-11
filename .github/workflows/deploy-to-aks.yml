@@ -1,44 +1,75 @@
-name: Deploy to AKS
+name: Build and deploy an app to AKS
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  AZURE_CONTAINER_REGISTRY: "skddemoacr"
+  CONTAINER_NAME: "my-static-site"
+  RESOURCE_GROUP: "skd-aks-demo-rg"
+  CLUSTER_NAME: "skd-demo-aks"
+  DEPLOYMENT_MANIFEST_PATH: "k8s/deployment.yaml"
 
 jobs:
-  deploy:
+  buildImage:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-        enable-AzPSSession: true
+      - name: Azure login
+        uses: azure/login@v1.4.6
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Build and push image to ACR
+        run: |
+          az acr build \
+            --image ${{ env.CONTAINER_NAME }}:${{ github.sha }} \
+            --registry ${{ env.AZURE_CONTAINER_REGISTRY }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} .
 
-    - name: Set up kubelogin for non-interactive login
-      uses: azure/use-kubelogin@v1
-      with:
-        kubelogin-version: 'v0.0.24'
+  deploy:
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    needs: [buildImage]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set AKS context using kubelogin
-      uses: azure/aks-set-context@v3
-      with:
-        resource-group: skd-aks-demo-rg
-        cluster-name: skd-demo-aks
+      - name: Azure login
+        uses: azure/login@v1.4.6
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Build Docker image
-      run: |
-        docker build -t skddemoacr.azurecr.io/my-static-site:${{ github.sha }} .
+      - name: Set up kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.25'
 
-    - name: Push Docker image to ACR
-      run: |
-        docker push skddemoacr.azurecr.io/my-static-site:${{ github.sha }}
+      - name: Get AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'true'
+          use-kubelogin: 'true'
 
-    - name: Update AKS deployment
-      run: |
-        kubectl set image deployment/myapp myapp=skddemoacr.azurecr.io/my-static-site:${{ github.sha }}
+      - name: Deploy to AKS
+        uses: Azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: ${{ env.DEPLOYMENT_MANIFEST_PATH }}
+          images: |
+            ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
