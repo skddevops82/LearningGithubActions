@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Azure Login
       uses: azure/login@v1
@@ -21,10 +21,17 @@ jobs:
     - name: Set AKS context
       uses: azure/aks-set-context@v3
       with:
-        resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
-        cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+        resource-group: skd-aks-demo-rg
+        cluster-name: skd-demo-aks
 
-    - name: Deploy to AKS
+    - name: Build Docker image
       run: |
-        kubectl apply -f deployment.yaml
-        kubectl apply -f service.yaml
+        docker build -t skddemoacr.azurecr.io/my-static-site:${{ github.sha }} .
+
+    - name: Push Docker image to ACR
+      run: |
+        docker push skddemoacr.azurecr.io/my-static-site:${{ github.sha }}
+
+    - name: Update AKS deployment
+      run: |
+        kubectl set image deployment/myapp myapp=skddemoacr.azurecr.io/my-static-site:${{ github.sha }}

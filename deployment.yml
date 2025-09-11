@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: myapp
-        image: skddemoacr.azurecr.io/myapp:latest
+        image: skddemoacr.azurecr.io/my-static-site:v1
         ports:
         - containerPort: 3000
