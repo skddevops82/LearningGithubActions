@@ -22,6 +22,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
       - name: Azure login
         uses: azure/login@v1.4.6
         with:
@@ -45,6 +49,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       - name: Azure login
         uses: azure/login@v1.4.6
