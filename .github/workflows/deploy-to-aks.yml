@@ -17,8 +17,15 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+        enable-AzPSSession: true
 
-    - name: Set AKS context
+
+    - name: Set up kubelogin for non-interactive login
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: 'v0.0.24'
+
+    - name: Set AKS context using kubelogin
       uses: azure/aks-set-context@v3
       with:
         resource-group: skd-aks-demo-rg
